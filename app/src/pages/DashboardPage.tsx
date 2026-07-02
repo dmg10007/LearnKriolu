@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useProfile } from '@/hooks/useProfile'
-import { BookOpen, Star, RotateCcw } from 'lucide-react'
+import { useReviewQueue } from '@/hooks/useReviewQueue'
+import { BookOpen, RotateCcw, Star } from 'lucide-react'
 
 export default function DashboardPage() {
-  const { profile, loading, updateStreak } = useProfile()
+  const { profile, loading: profileLoading, updateStreak } = useProfile()
+  const { queue, loading: queueLoading } = useReviewQueue()
 
-  // Update streak whenever the dashboard mounts (covers app re-opens)
   useEffect(() => {
     updateStreak()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -20,7 +21,7 @@ export default function DashboardPage() {
     return 'Bon noti'
   }
 
-  if (loading) {
+  if (profileLoading) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-8 bg-slate-200 rounded-lg w-48" />
@@ -60,7 +61,9 @@ export default function DashboardPage() {
         </div>
         <div className="card p-4 text-center">
           <div className="text-2xl">📖</div>
-          <div className="font-display font-bold text-xl text-slate-900 mt-1">0</div>
+          <div className="font-display font-bold text-xl text-slate-900 mt-1">
+            {profile?.xp_total ? Math.floor((profile.xp_total / 20)) * 12 : 0}
+          </div>
           <div className="text-xs text-slate-500 mt-0.5">Words Learned</div>
         </div>
       </div>
@@ -68,7 +71,7 @@ export default function DashboardPage() {
       {/* Continue learning CTA */}
       <Link
         to="/lessons"
-        className="card p-5 flex items-center gap-4 bg-gradient-to-r from-ocean-600 to-ocean-500 text-white hover:shadow-lg transition-shadow block"
+        className="card p-5 flex items-center gap-4 bg-gradient-to-r from-ocean-600 to-ocean-500 text-white hover:shadow-lg transition-shadow"
       >
         <BookOpen size={28} className="shrink-0 opacity-90" />
         <div className="flex-1">
@@ -78,15 +81,22 @@ export default function DashboardPage() {
         <span className="text-2xl opacity-70">›</span>
       </Link>
 
-      {/* Daily review card */}
+      {/* Daily review card — live count */}
       <Link to="/review" className="card p-5 flex items-center gap-4 hover:shadow-md transition-shadow">
         <div className="w-12 h-12 rounded-xl bg-sand-100 flex items-center justify-center">
           <RotateCcw size={22} className="text-sand-600" />
         </div>
         <div className="flex-1">
           <p className="font-semibold text-slate-800">Daily Review</p>
-          <p className="text-sm text-slate-500 mt-0.5">0 cards due today</p>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {queueLoading ? '…' : `${queue.length} card${queue.length !== 1 ? 's' : ''} due today`}
+          </p>
         </div>
+        {queue.length > 0 && (
+          <span className="bg-ocean-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+            {queue.length}
+          </span>
+        )}
         <Star size={18} className="text-slate-300" />
       </Link>
 

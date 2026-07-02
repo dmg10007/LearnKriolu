@@ -2,10 +2,14 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useLessons } from '@/hooks/useLessons'
 import { useLessonItems } from '@/hooks/useLessonItems'
+import { useReviewQueue } from '@/hooks/useReviewQueue'
+import { useProfile } from '@/hooks/useProfile'
 import { Volume2, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react'
 import type { Database } from '@/types/database'
 
 type LessonItem = Database['public']['Tables']['lesson_items']['Row']
+
+const XP_PER_LESSON = 20
 
 function FlashCard({ item, onNext, onPrev, index, total }: {
   item: LessonItem
@@ -17,10 +21,12 @@ function FlashCard({ item, onNext, onPrev, index, total }: {
   const [flipped, setFlipped] = useState(false)
 
   const playAudio = () => {
-    if (item.audio_url) {
-      new Audio(item.audio_url).play()
-    }
+    if (item.audio_url) new Audio(item.audio_url).play()
   }
+
+  // Reset flip state when card changes
+  const handleNext = () => { setFlipped(false); onNext() }
+  const handlePrev = () => { setFlipped(false); onPrev() }
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -68,7 +74,7 @@ function FlashCard({ item, onNext, onPrev, index, total }: {
       {/* Audio + nav */}
       <div className="flex items-center justify-between gap-3">
         <button
-          onClick={onPrev}
+          onClick={handlePrev}
           disabled={index === 0}
           className="btn-secondary flex items-center gap-1.5 disabled:opacity-30"
         >
@@ -87,11 +93,10 @@ function FlashCard({ item, onNext, onPrev, index, total }: {
         )}
 
         <button
-          onClick={onNext}
-          disabled={index === total - 1}
-          className="btn-primary flex items-center gap-1.5 disabled:opacity-30"
+          onClick={handleNext}
+          className="btn-primary flex items-center gap-1.5"
         >
-          Next <ChevronRight size={18} />
+          {index === total - 1 ? 'Finish' : 'Next'} <ChevronRight size={18} />
         </button>
       </div>
     </div>
@@ -102,26 +107,41 @@ export default function LessonDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { lessons } = useLessons()
   const { items, loading, error } = useLessonItems(id)
+  const { enrollItems } = useReviewQueue()
+  const { addXp } = useProfile()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [completed, setCompleted] = useState(false)
+  const [enrolling, setEnrolling] = useState(false)
 
   const lesson = lessons.find(l => l.id === id)
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < items.length - 1) {
       setCurrentIndex(i => i + 1)
     } else {
+      // Lesson complete — enroll all items into review queue + award XP
+      setEnrolling(true)
+      await Promise.all([
+        enrollItems(items.map(i => i.id)),
+        addXp(XP_PER_LESSON),
+      ])
+      setEnrolling(false)
       setCompleted(true)
     }
   }
 
   const handlePrev = () => setCurrentIndex(i => Math.max(0, i - 1))
 
-  if (loading) {
+  if (loading || enrolling) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-6 bg-slate-200 rounded w-24" />
         <div className="h-52 bg-slate-200 rounded-2xl" />
+        {enrolling && (
+          <p className="text-center text-sm text-slate-400 animate-fade-in">
+            Saving progress…
+          </p>
+        )}
       </div>
     )
   }
@@ -136,7 +156,15 @@ export default function LessonDetailPage() {
         <CheckCircle size={56} className="text-green-500" />
         <h2 className="font-display font-bold text-2xl text-slate-900">Lesson Complete!</h2>
         <p className="text-slate-500 text-sm max-w-xs">
-          You reviewed all {items.length} items in <strong>{lesson?.title ?? 'this lesson'}</strong>.
+          You reviewed all <strong>{items.length}</strong> items in{' '}
+          <strong>{lesson?.title ?? 'this lesson'}</strong>.
+        </p>
+        <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-2.5">
+          <span className="text-xl">⭐</span>
+          <span className="font-semibold text-yellow-700">+{XP_PER_LESSON} XP earned!</span>
+        </div>
+        <p className="text-slate-400 text-xs">
+          {items.length} cards added to your Review queue.
         </p>
         <div className="flex gap-3 mt-2">
           <button
@@ -145,7 +173,7 @@ export default function LessonDetailPage() {
           >
             Review Again
           </button>
-          <Link to="/lessons" className="btn-primary">Back to Lessons</Link>
+          <Link to="/review" className="btn-primary">Start Review →</Link>
         </div>
       </div>
     )
@@ -153,7 +181,6 @@ export default function LessonDetailPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Link to="/lessons" className="text-slate-400 hover:text-slate-600 transition-colors">
           <ChevronLeft size={22} />
