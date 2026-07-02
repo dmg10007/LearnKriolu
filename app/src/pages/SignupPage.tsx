@@ -15,10 +15,12 @@ export default function SignupPage() {
     setError(null)
     setLoading(true)
 
-    const { data, error: signupError } = await supabase.auth.signUp({
+    const { error: signupError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { display_name: displayName } },
+      options: {
+        data: { display_name: displayName },
+      },
     })
 
     if (signupError) {
@@ -27,17 +29,8 @@ export default function SignupPage() {
       return
     }
 
-    // Insert user profile row
-    if (data.user) {
-      await supabase.from('users').insert({
-        id: data.user.id,
-        email,
-        display_name: displayName,
-        xp_total: 0,
-        streak_count: 0,
-      })
-    }
-
+    // Profile row is created automatically by the DB trigger (002_user_profile_trigger.sql)
+    // No manual insert needed here.
     navigate('/dashboard')
     setLoading(false)
   }
@@ -45,54 +38,84 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm">
+        {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="font-display font-bold text-2xl text-ocean-700 flex items-center justify-center gap-2">
+          <Link to="/" className="inline-flex items-center gap-2 font-display font-bold text-2xl text-ocean-700">
             <span className="text-3xl">🌊</span> LearnKriolu
           </Link>
           <p className="text-slate-500 mt-2 text-sm">Start your Kriolu journey</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="card p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="card p-6 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="name">Your name</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="name">
+              Your name
+            </label>
             <input
-              id="name" type="text" required
+              id="name"
+              type="text"
+              required
+              autoComplete="given-name"
               className="input-field"
               placeholder="Maria"
-              value={displayName} onChange={e => setDisplayName(e.target.value)}
+              value={displayName}
+              onChange={e => setDisplayName(e.target.value)}
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="email">Email</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="email">
+              Email
+            </label>
             <input
-              id="email" type="email" required
+              id="email"
+              type="email"
+              required
+              autoComplete="email"
               className="input-field"
               placeholder="you@example.com"
-              value={email} onChange={e => setEmail(e.target.value)}
+              value={email}
+              onChange={e => setEmail(e.target.value)}
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="password">Password</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="password">
+              Password
+            </label>
             <input
-              id="password" type="password" required minLength={6}
+              id="password"
+              type="password"
+              required
+              minLength={6}
+              autoComplete="new-password"
               className="input-field"
               placeholder="At least 6 characters"
-              value={password} onChange={e => setPassword(e.target.value)}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
             />
+            <p className="text-xs text-slate-400 mt-1">Minimum 6 characters</p>
           </div>
 
           {error && (
-            <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+            <div role="alert" className="text-red-700 text-sm bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              {error}
+            </div>
           )}
 
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? 'Creating account…' : 'Create account'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                Creating account…
+              </span>
+            ) : 'Create account'}
           </button>
         </form>
 
-        <p className="text-center text-sm text-slate-500 mt-4">
+        <p className="text-center text-sm text-slate-500 mt-5">
           Already have an account?{' '}
-          <Link to="/login" className="text-ocean-600 font-medium hover:underline">Sign in</Link>
+          <Link to="/login" className="text-ocean-600 font-semibold hover:underline">Sign in</Link>
         </p>
       </div>
     </div>

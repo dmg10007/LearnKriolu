@@ -14,57 +14,86 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError(error.message)
-    } else {
-      navigate('/dashboard')
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (signInError) {
+      setError(signInError.message)
+      setLoading(false)
+      return
     }
+
+    // Update streak on successful login
+    if (data.user) {
+      await supabase.rpc('update_user_streak', { p_user_id: data.user.id })
+    }
+
+    navigate('/dashboard')
     setLoading(false)
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm">
+        {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="font-display font-bold text-2xl text-ocean-700 flex items-center justify-center gap-2">
+          <Link to="/" className="inline-flex items-center gap-2 font-display font-bold text-2xl text-ocean-700">
             <span className="text-3xl">🌊</span> LearnKriolu
           </Link>
           <p className="text-slate-500 mt-2 text-sm">Welcome back</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="card p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="card p-6 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="email">Email</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="email">
+              Email
+            </label>
             <input
-              id="email" type="email" required
+              id="email"
+              type="email"
+              required
+              autoComplete="email"
               className="input-field"
               placeholder="you@example.com"
-              value={email} onChange={e => setEmail(e.target.value)}
+              value={email}
+              onChange={e => setEmail(e.target.value)}
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="password">Password</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="password">
+              Password
+            </label>
             <input
-              id="password" type="password" required
+              id="password"
+              type="password"
+              required
+              autoComplete="current-password"
               className="input-field"
               placeholder="••••••••"
-              value={password} onChange={e => setPassword(e.target.value)}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
             />
           </div>
 
           {error && (
-            <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+            <div role="alert" className="text-red-700 text-sm bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              {error}
+            </div>
           )}
 
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                Signing in…
+              </span>
+            ) : 'Sign in'}
           </button>
         </form>
 
-        <p className="text-center text-sm text-slate-500 mt-4">
+        <p className="text-center text-sm text-slate-500 mt-5">
           Don't have an account?{' '}
-          <Link to="/signup" className="text-ocean-600 font-medium hover:underline">Sign up</Link>
+          <Link to="/signup" className="text-ocean-600 font-semibold hover:underline">Sign up free</Link>
         </p>
       </div>
     </div>
